@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SageStack - Vendor Compliance Checker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .resultPanel { transition: opacity 300ms ease, transform 300ms ease; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+  <!-- Simple Top Navbar -->
+  <nav class="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded bg-blue-600 text-white font-bold flex items-center justify-center text-sm">SS</div>
+      <div>
+        <span class="font-bold text-slate-900 text-base">SageStack</span>
+        <span class="text-slate-400 mx-2">|</span>
+        <span class="text-sm text-slate-600">AI-Powered Vendor Compliance Checker</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded border border-slate-200 font-medium">
+        Pipeline: Upload → Extract → Verify → Report
+      </span>
+      <button onclick="window.print()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-3.5 py-2 rounded transition">
+        Download Report
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Workspace -->
+  <main class="max-w-6xl mx-auto p-6 grid grid-cols-12 gap-6">
+
+    <!-- Left Panel: Input & Upload (4 Cols) -->
+    <div class="col-span-12 md:col-span-4 space-y-5">
+      
+      <!-- Step 1: Select Checklist -->
+      <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
+        <label class="block text-xs font-semibold uppercase text-slate-500 mb-2">1. Select Tender Checklist</label>
+        <select id="checklistSelect" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option>Standard Gov Procurement (10 Requirements)</option>
+          <option>MSME IT Hardware Supply (8 Requirements)</option>
+        </select>
+        <p class="text-xs text-slate-500 mt-2">Checks GST, PAN, Udyam/MSME, Startup India & OEM Authorization.</p>
+      </div>
+
+      <!-- Step 2: Uploaded Documents -->
+      <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <label id="documentLabel" class="text-xs font-semibold uppercase text-slate-500">2. Vendor Documents (5)</label>
+          <button id="uploadButton" type="button" onclick="document.getElementById('fileUpload').click()" class="text-xs text-blue-600 font-medium hover:underline">+ Upload PDF</button>
+          <input type="file" id="fileUpload" class="hidden" accept=".pdf" multiple onchange="triggerBackend()">
+        </div>
+
+        <ul id="documentList" class="space-y-2 text-sm">
+          <li class="flex items-center justify-between p-2.5 bg-slate-50 rounded border border-slate-200">
+            <span class="truncate font-medium text-slate-700">gst_certificate.pdf</span>
+            <span class="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">Extracted</span>
+          </li>
+          <li class="flex items-center justify-between p-2.5 bg-slate-50 rounded border border-slate-200">
+            <span class="truncate font-medium text-slate-700">pan_card.pdf</span>
+            <span class="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">Extracted</span>
+          </li>
+          <li class="flex items-center justify-between p-2.5 bg-slate-50 rounded border border-slate-200">
+            <span class="truncate font-medium text-slate-700">udyam_certificate.pdf</span>
+            <span class="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">Extracted</span>
+          </li>
+          <li class="flex items-center justify-between p-2.5 bg-slate-50 rounded border border-slate-200">
+            <span class="truncate font-medium text-slate-700">startup_india.pdf</span>
+            <span class="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">Extracted</span>
+          </li>
+          <li class="flex items-center justify-between p-2.5 bg-slate-50 rounded border border-slate-200">
+            <span class="truncate font-medium text-slate-700">oem_letter.pdf</span>
+            <span class="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">Extracted</span>
+          </li>
+        </ul>
+
+        <button id="runCheckButton" type="button" class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm py-2 rounded-md transition">
+          Run Compliance Check
+        </button>
+        <p id="loadingStatus" class="hidden mt-3 text-xs text-blue-700 leading-relaxed" role="status" aria-live="polite"></p>
+      </div>
+
+      <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
+        <button id="scenarioToggle" type="button" aria-expanded="false" aria-controls="scenarioOptions" class="w-full text-left text-sm font-semibold text-blue-700 hover:text-blue-800">
+          + Add Custom Sample / Test Case
+        </button>
+        <div id="scenarioOptions" class="hidden mt-3 space-y-2">
+          <p class="text-xs text-slate-500">Switch the demo data instantly:</p>
+          <button type="button" data-scenario="mismatch" class="scenarioButton w-full text-left border border-slate-200 rounded-md px-3 py-2 text-xs hover:border-blue-400 hover:bg-blue-50">Expired OEM &amp; Name Mismatch</button>
+          <button type="button" data-scenario="compliant" class="scenarioButton w-full text-left border border-slate-200 rounded-md px-3 py-2 text-xs hover:border-blue-400 hover:bg-blue-50">All Compliant</button>
+        </div>
+      </div>
+
+      <!-- Readiness Score Summary -->
+      <div class="resultPanel bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
+        <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Tender Readiness Score</label>
+        <div id="score-display" class="text-xl font-bold text-slate-900 mb-3">6 of 10 requirements met</div>
+        
+        <!-- Simple Progress Bar -->
+        <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex mb-3">
+          <div id="metBar" class="bg-emerald-500 h-full transition-all duration-500" style="width: 60%" title="6 Met"></div>
+          <div id="reviewBar" class="bg-amber-400 h-full transition-all duration-500" style="width: 20%" title="2 Requires Review"></div>
+          <div id="notMetBar" class="bg-rose-500 h-full transition-all duration-500" style="width: 20%" title="2 Not Met"></div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 text-center text-xs">
+          <div class="p-2 rounded bg-emerald-50 border border-emerald-200 text-emerald-800">
+            <span id="metCount" class="font-bold block text-sm">6</span> Met
+          </div>
+          <div class="p-2 rounded bg-amber-50 border border-amber-200 text-amber-800">
+            <span id="reviewCount" class="font-bold block text-sm">2</span> Review
+          </div>
+          <div class="p-2 rounded bg-rose-50 border border-rose-200 text-rose-800">
+            <span id="notMetCount" class="font-bold block text-sm">2</span> Not Met
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-500 mt-3">
+          Score = weight of met items / total weight. Items needing review are not counted as met.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Right Panel: Results & Evidence (8 Cols) -->
+    <div class="col-span-12 md:col-span-8 space-y-5">
+
+      <!-- Cross-Document Mismatch Table -->
+      <div class="resultPanel bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-bold text-slate-900">Cross-Document Mismatch Detection</h2>
+          <span class="text-xs text-slate-500">Compares extracted fields across uploaded PDFs</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-200 bg-slate-50 text-slate-600">
+                <th class="py-2.5 px-3 font-semibold">Field</th>
+                <th class="py-2.5 px-3 font-semibold">GST Certificate</th>
+                <th class="py-2.5 px-3 font-semibold">PAN Card</th>
+                <th class="py-2.5 px-3 font-semibold">Udyam</th>
+                <th class="py-2.5 px-3 font-semibold text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody id="mismatch-body" class="divide-y divide-slate-200">
+              <tr class="bg-amber-50/40">
+                <td class="py-2.5 px-3 font-medium text-slate-900">Legal name</td>
+                <td class="py-2.5 px-3 text-slate-600">Sample Traders Pvt Ltd</td>
+                <td class="py-2.5 px-3 text-slate-600">SAMPLE TRADERS PRIVATE LIMITED</td>
+                <td class="py-2.5 px-3 text-amber-800 font-medium">Sample Trader Enterprises</td>
+                <td class="py-2.5 px-3 text-right">
+                  <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold text-[11px]">REVIEW</span>
+                </td>
+              </tr>
+              <tr>
+                <td class="py-2.5 px-3 font-medium text-slate-900">PAN</td>
+                <td class="py-2.5 px-3 text-slate-600">ABCDE1234F <span class="text-slate-400">(in GSTIN)</span></td>
+                <td class="py-2.5 px-3 text-slate-600">ABCDE1234F</td>
+                <td class="py-2.5 px-3 text-slate-600">ABCDE1234F</td>
+                <td class="py-2.5 px-3 text-right">
+                  <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold text-[11px]">MATCH</span>
+                </td>
+              </tr>
+              <tr>
+                <td class="py-2.5 px-3 font-medium text-slate-900">Address</td>
+                <td class="py-2.5 px-3 text-slate-600">Plot 12, Sector 5</td>
+                <td class="py-2.5 px-3 text-slate-400 italic">Not on card</td>
+                <td class="py-2.5 px-3 text-slate-600">Plot 12, Sec-5</td>
+                <td class="py-2.5 px-3 text-right">
+                  <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold text-[11px]">MATCH</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Evidence-Based Findings List -->
+      <div id="findingsList" class="resultPanel bg-white p-5 rounded-lg border border-slate-200 shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold text-slate-900">Evidence-Based Compliance Findings</h2>
+          <span class="text-xs text-slate-500">Showing flagged & sample items</span>
+        </div>
+
+        <div id="findings-container" class="space-y-4">
+        <!-- Finding 1: Non-Compliant (from Slide 6) -->
+        <div class="border border-rose-200 bg-rose-50/30 rounded-lg p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-semibold text-sm text-slate-900">Finding 3: OEM Authorization</span>
+            <span class="px-2.5 py-0.5 rounded bg-rose-100 text-rose-800 font-semibold text-xs border border-rose-200">NON-COMPLIANT</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs text-slate-600 mb-3">
+            <div><strong class="text-slate-800">Requirement:</strong> Valid OEM authorization for tendered product</div>
+            <div><strong class="text-slate-800">Extracted Value:</strong> <span class="text-rose-700 font-medium">Valid until 31 Mar 2026</span></div>
+            <div><strong class="text-slate-800">Source:</strong> <span class="underline">oem_letter.pdf, page 1</span></div>
+            <div><strong class="text-slate-800">Rule Applied:</strong> Validity date must be on or after submission date</div>
+          </div>
+          <div class="flex items-center justify-between pt-2 border-t border-rose-200/60 text-xs">
+            <span class="text-slate-600"><strong>Reviewer Action:</strong> Confirm the date against the original document</span>
+            <div class="space-x-2">
+              <button onclick="this.parentElement.innerHTML='<span class=\'text-rose-700 font-medium\'>✓ Confirmed Non-Compliant</span>'" class="px-2.5 py-1 bg-white border border-slate-300 rounded hover:bg-slate-50 text-slate-700 font-medium">Confirm</button>
+              <button onclick="this.parentElement.innerHTML='<span class=\'text-slate-600 font-medium\'>Overridden for Manual Check</span>'" class="px-2.5 py-1 bg-white border border-slate-300 rounded hover:bg-slate-50 text-slate-700">Override</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Finding 2: Requires Review -->
+        <div class="border border-amber-200 bg-amber-50/30 rounded-lg p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-semibold text-sm text-slate-900">Finding 5: Entity Name Consistency (Udyam vs GST/PAN)</span>
+            <span class="px-2.5 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold text-xs border border-amber-200">REQUIRES REVIEW</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs text-slate-600 mb-3">
+            <div><strong class="text-slate-800">Requirement:</strong> Legal entity name must match across all certificates</div>
+            <div><strong class="text-slate-800">Extracted Value:</strong> "Sample Trader Enterprises" (Udyam)</div>
+            <div><strong class="text-slate-800">Source:</strong> <span class="underline">udyam_certificate.pdf, page 1</span></div>
+            <div><strong class="text-slate-800">Rule Applied:</strong> Doubtful matches routed to human review, never auto-rejected</div>
+          </div>
+          <div class="flex items-center justify-between pt-2 border-t border-amber-200/60 text-xs">
+            <span class="text-slate-600"><strong>Reviewer Action:</strong> Verify if trade name and legal name belong to same entity</span>
+            <div class="space-x-2">
+              <button onclick="this.parentElement.innerHTML='<span class=\'text-emerald-700 font-medium\'>✓ Approved by Reviewer</span>'" class="px-2.5 py-1 bg-white border border-slate-300 rounded hover:bg-slate-50 text-slate-700 font-medium">Approve Match</button>
+              <button onclick="this.parentElement.innerHTML='<span class=\'text-rose-700 font-medium\'>✗ Rejected by Reviewer</span>'" class="px-2.5 py-1 bg-white border border-slate-300 rounded hover:bg-slate-50 text-slate-700">Reject</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Finding 3: Compliant -->
+        <div class="border border-slate-200 bg-slate-50/50 rounded-lg p-3.5 flex items-center justify-between">
+          <div class="text-xs">
+            <span class="font-semibold text-slate-900 text-sm block">Finding 1: GSTIN & PAN Structure Verification</span>
+            <span class="text-slate-500">Extracted: <strong>07ABCDE1234F1Z5</strong> • Source: <span class="underline">gst_certificate.pdf, page 1</span></span>
+          </div>
+          <span class="px-2.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold text-xs border border-emerald-200">COMPLIANT</span>
+        </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+  <script>
+    const defaultFiles = [
+      "gst_certificate.pdf",
+      "pan_card.pdf",
+      "udyam_certificate.pdf",
+      "startup_india.pdf",
+      "oem_letter.pdf"
+    ];
+    const activeFiles = [...defaultFiles];
+    const checklistSelect = document.getElementById("checklistSelect");
+    const documentList = document.getElementById("documentList");
+    const documentLabel = document.getElementById("documentLabel");
+    const fileUpload = document.getElementById("fileUpload");
+    const runCheckButton = document.getElementById("runCheckButton");
+    const loadingStatus = document.getElementById("loadingStatus");
+    const resultPanels = document.querySelectorAll(".resultPanel");
+    let scenario = "mismatch";
+    let uploadedFiles = false;
+
+    function escapeHTML(value) {
+      return value.replace(/[&<>"']/g, (character) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      })[character]);
+    }
+
+    function checklistTotal() {
+      return checklistSelect.selectedIndex === 0 ? 10 : 8;
+    }
+
+    function getCounts() {
+      const total = checklistTotal();
+      if (scenario === "compliant") return { met: total, review: 0, notMet: 0, total };
+      return total === 10
+        ? { met: 6, review: 2, notMet: 2, total }
+        : { met: 5, review: 2, notMet: 1, total };
+    }
+
+    function updateScore() {
+      const counts = getCounts();
+      document.getElementById("score-display").textContent =
+        `${counts.met} of ${counts.total} requirements met`;
+      document.getElementById("metCount").textContent = counts.met;
+      document.getElementById("reviewCount").textContent = counts.review;
+      document.getElementById("notMetCount").textContent = counts.notMet;
+      [
+        ["metBar", counts.met, "Met"],
+        ["reviewBar", counts.review, "Requires Review"],
+        ["notMetBar", counts.notMet, "Not Met"]
+      ].forEach(([id, count, label]) => {
+        const bar = document.getElementById(id);
+        bar.style.width = `${(count / counts.total) * 100}%`;
+        bar.title = `${count} ${label}`;
+      });
+    }
+
+    function renderDocuments() {
+      documentLabel.textContent = `2. Vendor Documents (${activeFiles.length})`;
+      documentList.innerHTML = activeFiles.map((file) => `
+        <li class="flex items-center justify-between p-2.5 bg-slate-50 rounded border border-slate-200">
+          <span class="truncate font-medium text-slate-700" title="${escapeHTML(file)}">${escapeHTML(file)}</span>
+          <span class="text-xs ${uploadedFiles ? "text-blue-700 bg-blue-50 border-blue-200" : "text-emerald-700 bg-emerald-50 border-emerald-200"} border px-2 py-0.5 rounded">${uploadedFiles ? "Ready" : "Extracted"}</span>
+        </li>`).join("");
+    }
+
+    function sourceFile(index, fallback) {
+      const role = fallback.split("_")[0].toLowerCase();
+      const matchingFile = activeFiles.find((file) => file.toLowerCase().includes(role));
+      return escapeHTML(matchingFile || activeFiles[Math.min(index, activeFiles.length - 1)] || fallback);
+    }
+
+    function renderMismatchTable() {
+      const compliant = scenario === "compliant";
+      const legalStatus = compliant
+        ? '<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold text-[11px]">MATCH</span>'
+        : '<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold text-[11px]">REVIEW</span>';
+      document.getElementById("mismatch-body").innerHTML = `
+        <tr class="${compliant ? "" : "bg-amber-50/40"}">
+          <td class="py-2.5 px-3 font-medium text-slate-900">Legal name</td>
+          <td class="py-2.5 px-3 text-slate-600">Sample Traders Pvt Ltd</td>
+          <td class="py-2.5 px-3 text-slate-600">SAMPLE TRADERS PRIVATE LIMITED</td>
+          <td class="py-2.5 px-3 ${compliant ? "text-slate-600" : "text-amber-800 font-medium"}">${compliant ? "Sample Traders Pvt Ltd" : "Sample Trader Enterprises"}</td>
+          <td class="py-2.5 px-3 text-right">${legalStatus}</td>
+        </tr>
+        <tr>
+          <td class="py-2.5 px-3 font-medium text-slate-900">PAN</td>
+          <td class="py-2.5 px-3 text-slate-600">ABCDE1234F <span class="text-slate-400">(in GSTIN)</span></td>
+          <td class="py-2.5 px-3 text-slate-600">ABCDE1234F</td>
+          <td class="py-2.5 px-3 text-slate-600">ABCDE1234F</td>
+          <td class="py-2.5 px-3 text-right"><span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold text-[11px]">MATCH</span></td>
+        </tr>
+        <tr>
+          <td class="py-2.5 px-3 font-medium text-slate-900">Address</td>
+          <td class="py-2.5 px-3 text-slate-600">Plot 12, Sector 5</td>
+          <td class="py-2.5 px-3 text-slate-400 italic">Not on card</td>
+          <td class="py-2.5 px-3 text-slate-600">Plot 12, Sec-5</td>
+          <td class="py-2.5 px-3 text-right"><span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold text-[11px]">MATCH</span></td>
+        </tr>`;
+    }
+
+    function renderFindings() {
+      const findings = document.getElementById("findingsList");
+      const compliant = scenario === "compliant";
+      findings.innerHTML = `
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold text-slate-900">Evidence-Based Compliance Findings</h2>
+          <span class="text-xs text-slate-500">${compliant ? "All sample checks passed" : "Showing flagged & sample items"}</span>
+        </div>
+        <div id="findings-container" class="space-y-4">
+        ${compliant ? `
+          <div class="border border-emerald-200 bg-emerald-50/40 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-semibold text-sm text-slate-900">Finding 3: OEM Authorization</span>
+              <span class="px-2.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold text-xs border border-emerald-200">COMPLIANT</span>
+            </div>
+            <p class="text-xs text-slate-600">Valid OEM authorization is on file and remains valid through the tender submission date.</p>
+            <p class="mt-2 text-xs text-slate-500">Source: ${sourceFile(4, "oem_letter.pdf")}, page 1</p>
+          </div>
+          <div class="border border-emerald-200 bg-emerald-50/40 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-semibold text-sm text-slate-900">Finding 5: Entity Name Consistency</span>
+              <span class="px-2.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold text-xs border border-emerald-200">COMPLIANT</span>
+            </div>
+            <p class="text-xs text-slate-600">Legal entity name is consistent across GST, PAN and Udyam records.</p>
+            <p class="mt-2 text-xs text-slate-500">Source: ${sourceFile(2, "udyam_certificate.pdf")}, page 1</p>
+          </div>
+          <div class="border border-slate-200 bg-slate-50/50 rounded-lg p-3.5 flex items-center justify-between">
+            <div class="text-xs">
+              <span class="font-semibold text-slate-900 text-sm block">Finding 1: GSTIN &amp; PAN Structure Verification</span>
+              <span class="text-slate-500">Extracted: <strong>07ABCDE1234F1Z5</strong> • Source: ${sourceFile(0, "gst_certificate.pdf")}, page 1</span>
+            </div>
+            <span class="px-2.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold text-xs border border-emerald-200">COMPLIANT</span>
+          </div>` : `
+          <div class="border border-rose-200 bg-rose-50/30 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-semibold text-sm text-slate-900">Finding 3: OEM Authorization</span>
+              <span class="px-2.5 py-0.5 rounded bg-rose-100 text-rose-800 font-semibold text-xs border border-rose-200">NON-COMPLIANT</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-xs text-slate-600 mb-3">
+              <div><strong class="text-slate-800">Requirement:</strong> Valid OEM authorization for tendered product</div>
+              <div><strong class="text-slate-800">Extracted Value:</strong> <span class="text-rose-700 font-medium">Expired 31 Mar 2026</span></div>
+              <div><strong class="text-slate-800">Source:</strong> <span class="underline">${sourceFile(4, "oem_letter.pdf")}, page 1</span></div>
+              <div><strong class="text-slate-800">Rule Applied:</strong> Validity date must be on or after submission date</div>
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-rose-200/60 text-xs">
+              <span class="text-slate-600"><strong>Reviewer Action:</strong> Confirm the date against the original document</span>
+              <div class="space-x-2">
+                <button data-review-action="Confirmed Non-Compliant" class="reviewAction px-2.5 py-1 bg-white border border-slate-300 rounded hover:bg-slate-50 text-slate-700 font-medium">Confirm</button>
+                <button data-review-action="Overridden for Manual Check" class="reviewAction px-2.5 py-1 bg-white border border-slate-300 rounded hover:bg-slate-50 text-slate-700">Override</button>
+              </div>
+            </div>
+          </div>
+          <div class="border border-amber-200 bg-amber-50/30 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-semibold text-sm text-slate-900">Finding 5: Entity Name Consistency (Udyam vs GST/PAN)</span>
+              <span class="px-2.5 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold text-xs border border-amber-200">REQUIRES REVIEW</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-xs text-slate-600 mb-3">
+              <div><strong class="text-slate-800">Requirement:</strong> Legal entity name must match across all certificates</div>
+              <div><strong class="text-slate-800">Extracted Value:</strong> "Sample Trader Enterprises" (Udyam)</div>
+              <div><strong class="text-slate-800">Source:</strong> <span class="underline">${sourceFile(2, "udyam_certificate.pdf")}, page 1</span></div>
+              <div><strong class="text-slate-800">Rule Applied:</strong> Doubtful matches routed to human review, never auto-rejected</div>
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-amber-200/60 text-xs">
+              <span class="text-slate-600"><strong>Reviewer Action:</strong> Verify if trade name and legal name belong to same entity</span>
+              <div class="space-x-2">
+                <button data-review-action="Approved by Reviewer" class="reviewAction px-2.5 py-1 bg-white border border-slate-300 rounded hover:bg-slate-50 text-slate-700 font-medium">Approve Match</button>
+                <button data-review-action="Rejected by Reviewer" class="reviewAction px-2.5 py-1 bg-white border border-slate-300 rounded hover:bg-slate-50 text-slate-700">Reject</button>
+              </div>
+            </div>
+          </div>
+          <div class="border border-slate-200 bg-slate-50/50 rounded-lg p-3.5 flex items-center justify-between">
+            <div class="text-xs">
+              <span class="font-semibold text-slate-900 text-sm block">Finding 1: GSTIN &amp; PAN Structure Verification</span>
+              <span class="text-slate-500">Extracted: <strong>07ABCDE1234F1Z5</strong> • Source: ${sourceFile(0, "gst_certificate.pdf")}, page 1</span>
+            </div>
+            <span class="px-2.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold text-xs border border-emerald-200">COMPLIANT</span>
+          </div>`}            </div>
+          `;
+    }
+
+    function refreshResults() {
+      resultPanels.forEach((panel) => panel.classList.add("opacity-40", "translate-y-1"));
+      window.setTimeout(() => {
+        updateScore();
+        renderMismatchTable();
+        renderFindings();
+        window.requestAnimationFrame(() => {
+          resultPanels.forEach((panel) => panel.classList.remove("opacity-40", "translate-y-1"));
+        });
+      }, 60);
+    }
+
+    async function triggerBackend() {
+      const inputElement = fileUpload;
+      const file = inputElement.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("checklist_id", "GeM-2026-IT-8841");
+
+      try {
+        const res = await fetch("http://127.0.0.1:8000/api/evaluate", {
+          method: "POST",
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || `Request failed with status ${res.status}`);
+        }
+
+        const escapeValue = (value) => escapeHTML(value == null ? "" : String(value));
+        document.getElementById("score-display").textContent =
+          `${data.readiness.counts.met} of ${data.readiness.counts.total} requirements met`;
+
+        document.getElementById("mismatch-body").innerHTML = data.cross_document_matrix.map((row) => {
+          const status = String(row.result || "").toUpperCase();
+          const isMatch = status === "MATCH";
+          const isMismatch = status === "MISMATCH" || status === "NON-COMPLIANT";
+          const rowClass = isMatch ? "" : isMismatch ? "bg-rose-50/40" : "bg-amber-50/40";
+          const statusClasses = isMatch
+            ? "bg-emerald-100 text-emerald-800"
+            : isMismatch
+              ? "bg-rose-100 text-rose-800"
+              : "bg-amber-100 text-amber-800";
+          const valueClass = isMatch
+            ? "text-slate-600"
+            : isMismatch
+              ? "text-rose-800 font-medium"
+              : "text-amber-800 font-medium";
+
+          return `
+            <tr class="${rowClass}">
+              <td class="py-2.5 px-3 font-medium text-slate-900">${escapeValue(row.field)}</td>
+              <td class="py-2.5 px-3 text-slate-600">${escapeValue(row.gst)}</td>
+              <td class="py-2.5 px-3 text-slate-600">${escapeValue(row.pan)}</td>
+              <td class="py-2.5 px-3 ${valueClass}">${escapeValue(row.udyam)}</td>
+              <td class="py-2.5 px-3 text-right">
+                <span class="px-2 py-0.5 rounded ${statusClasses} font-semibold text-[11px]">${escapeValue(status)}</span>
+              </td>
+            </tr>`;
+        }).join("");
+
+        document.getElementById("findings-container").innerHTML = data.findings.map((finding) => {
+          const status = String(finding.status || "").toUpperCase();
+          const isCompliant = status === "COMPLIANT";
+          const isNonCompliant = status === "NON-COMPLIANT";
+          const cardClasses = isCompliant
+            ? "border-emerald-200 bg-emerald-50/40"
+            : isNonCompliant
+              ? "border-rose-200 bg-rose-50/30"
+              : "border-amber-200 bg-amber-50/30";
+          const badgeClasses = isCompliant
+            ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+            : isNonCompliant
+              ? "bg-rose-100 text-rose-800 border-rose-200"
+              : "bg-amber-100 text-amber-800 border-amber-200";
+          const extractedClasses = isNonCompliant
+            ? "text-rose-700 font-medium"
+            : isCompliant
+              ? "text-emerald-700 font-medium"
+              : "text-amber-700 font-medium";
+
+          return `
+            <div class="border ${cardClasses} rounded-lg p-4">
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-semibold text-sm text-slate-900">${escapeValue(finding.title)}</span>
+                <span class="px-2.5 py-0.5 rounded ${badgeClasses} font-semibold text-xs border">${escapeValue(status)}</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-xs text-slate-600 mb-3">
+                <div><strong class="text-slate-800">Requirement:</strong> ${escapeValue(finding.requirement)}</div>
+                <div><strong class="text-slate-800">Extracted Value:</strong> <span class="${extractedClasses}">${escapeValue(finding.extracted_value)}</span></div>
+                <div><strong class="text-slate-800">Source:</strong> <span class="underline">${escapeValue(finding.source)}</span></div>
+                <div><strong class="text-slate-800">Rule Applied:</strong> ${escapeValue(finding.rule_applied)}</div>
+              </div>
+            </div>`;
+        }).join("");
+
+        console.log(data);
+        activeFiles.splice(0, activeFiles.length, file.name);
+        uploadedFiles = true;
+        renderDocuments();
+      } catch (error) {
+        console.error("File upload failed:", error);
+        alert(`File upload failed: ${error.message}`);
+      } finally {
+        document.getElementById("uploadButton").innerText = "Analysis Complete (Check Console)";
+      }
+    }
+
+    checklistSelect.addEventListener("change", updateScore);
+    document.getElementById("scenarioToggle").addEventListener("click", (event) => {
+      const toggle = event.currentTarget;
+      const options = document.getElementById("scenarioOptions");
+      const expanded = toggle.getAttribute("aria-expanded") === "true";
+      toggle.setAttribute("aria-expanded", String(!expanded));
+      options.classList.toggle("hidden", expanded);
+      toggle.textContent = expanded ? "+ Add Custom Sample / Test Case" : "− Hide Test Cases";
+    });
+    document.querySelectorAll(".scenarioButton").forEach((button) => {
+      button.addEventListener("click", () => {
+        scenario = button.dataset.scenario;
+        refreshResults();
+      });
+    });
+    document.getElementById("findingsList").addEventListener("click", (event) => {
+      const button = event.target.closest(".reviewAction");
+      if (!button) return;
+      const action = document.createElement("span");
+      action.className = "font-medium text-slate-700";
+      action.textContent = button.dataset.reviewAction;
+      button.parentElement.replaceChildren(action);
+    });
+
+    runCheckButton.addEventListener("click", async () => {
+      runCheckButton.disabled = true;
+      runCheckButton.classList.add("opacity-60", "cursor-wait");
+      runCheckButton.textContent = "Checking...";
+      loadingStatus.classList.remove("hidden");
+      const steps = [
+        "1. Running OCR...",
+        "2. Checking Tender Rules...",
+        "3. Cross-Checking GST/PAN/Udyam...",
+        "4. Generating AI Explanations..."
+      ];
+      for (const step of steps) {
+        loadingStatus.textContent = step;
+        await new Promise((resolve) => window.setTimeout(resolve, 375));
+      }
+      refreshResults();
+      loadingStatus.textContent = "Compliance check complete.";
+      runCheckButton.disabled = false;
+      runCheckButton.classList.remove("opacity-60", "cursor-wait");
+      runCheckButton.textContent = "Run Compliance Check";
+      window.setTimeout(() => loadingStatus.classList.add("hidden"), 1400);
+    });
+  </script>
+</body>
+</html>

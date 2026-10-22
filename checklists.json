@@ -1,0 +1,31 @@
+{
+  "GeM-2026-IT-8841": {
+    "tender_id": "GeM-2026-IT-8841",
+    "title": "Standard Gov Procurement (10 Requirements)",
+    "submission_deadline": "2026-04-15",
+    "requirements": [
+      { "id": "REQ-1", "doc_type": "gst", "name": "Valid 15-Digit GSTIN Format", "weight": 2.0, "mandatory": true },
+      { "id": "REQ-2", "doc_type": "pan", "name": "Valid 10-Character Corporate PAN", "weight": 2.0, "mandatory": true },
+      { "id": "REQ-3", "doc_type": "oem", "name": "Valid OEM Authorization (Unexpired)", "weight": 2.0, "mandatory": true },
+      { "id": "REQ-4", "doc_type": "cross", "name": "PAN Inside GSTIN Matches PAN Card", "weight": 1.5, "mandatory": true },
+      { "id": "REQ-5", "doc_type": "cross", "name": "Legal Entity Name Consistency Across Docs", "weight": 1.5, "mandatory": true },
+      { "id": "REQ-6", "doc_type": "udyam", "name": "Udyam / MSME Registration Number Present", "weight": 1.0, "mandatory": false },
+      { "id": "REQ-7", "doc_type": "startup", "name": "DPIIT Startup India Certificate Valid", "weight": 1.0, "mandatory": false },
+      { "id": "REQ-8", "doc_type": "cross", "name": "Registered Address Consistency", "weight": 1.0, "mandatory": true },
+      { "id": "REQ-9", "doc_type": "gst", "name": "Active GST Filing Status", "weight": 1.0, "mandatory": true },
+      { "id": "REQ-10", "doc_type": "oem", "name": "Tender Specific Product Code Listed in OEM Letter", "weight": 1.0, "mandatory": true }
+    ]
+  },
+  "MSME-Hardware-09": {
+    "tender_id": "MSME-Hardware-09",
+    "title": "MSME IT Hardware Supply (8 Requirements)",
+    "submission_deadline": "2026-04-15",
+    "requirements": [
+      { "id": "REQ-1", "doc_type": "gst", "name": "Valid 15-Digit GSTIN Format", "weight": 2.0, "mandatory": true },
+      { "id": "REQ-2", "doc_type": "pan", "name": "Valid 10-Character Corporate PAN", "weight": 2.0, "mandatory": true },
+      { "id": "REQ-3", "doc_type": "udyam", "name": "Udyam / MSME Registration Active", "weight": 2.0, "mandatory": true },
+      { "id": "REQ-4", "doc_type": "cross", "name": "PAN Inside GSTIN Matches PAN Card", "weight": 1.5, "mandatory": true },
+      { "id": "REQ-5", "doc_type": "cross", "name": "Legal Entity Name Consistency Across Docs", "weight": 1.5, "mandatory": true }
+    ]
+  }
+}
